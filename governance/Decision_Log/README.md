@@ -13,7 +13,7 @@
 
 | # | Title | Originating RFC | Priority | Status | File |
 |---|---|---|---|---|---|
-| — | *(none yet — the first implementation-phase ADR will be `0044`)* | | | | |
+| 0044 | The kill switch is re-checked at broker send, scoped to `ENTRY`, not only at token mint | [RFC-0001](../RFC/RFC-0001-kill-switch-recheck-at-broker-send.md) | P0 | Accepted, 2026-08-06 | [`../../Architecture/decisions/0044-kill-switch-recheck-at-broker-send.md`](../../Architecture/decisions/0044-kill-switch-recheck-at-broker-send.md) |
 
 Update this table on every new ADR, per `../ADR/ADR_Governance.md`. New rows go at the bottom; numbers are never reused or reordered (`../RFC/RFC_Numbering.md`'s sibling rule for ADRs).
 

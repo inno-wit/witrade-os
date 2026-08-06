@@ -3,6 +3,7 @@
 **Blueprint deliverable:** B.4
 **Grounded in:** `../Architecture/generated/15_Event_Catalog_v2.md` §7 ("What is deliberately not an event" — the platform's real synchronous-call surface), `../Architecture/19_Bounded_Context_Map.md`'s Interfaces columns, `../Architecture/21_Security_Architecture.md` §3 (RBAC)
 **Status:** Blueprint v1.0, 2026-08-04
+**Amended:** 2026-08-06 — `CheckKillSwitch` row corrected per [ADR-0044](../Architecture/decisions/0044-kill-switch-recheck-at-broker-send.md). It previously read "in-process within C21, not cross-service," which an independent review found was being taken to mean the check exists only in C21 — foreclosing the C24 recheck this ADR adds. Both calls remain local, in-process method calls; there are now two of them, in two different processes.
 
 ---
 
@@ -25,7 +26,7 @@ The complete list — nothing else in this platform is a synchronous call, by de
 | `GetPortfolioSnapshot` | BC5, BC12 → BC7 (Ledger, C22) | Async read model (cached, not a live call) | Serve last-known, marked stale | `../Architecture/19_Bounded_Context_Map.md` |
 | `GetPortfolioSnapshot` (sync) | BC6 (Risk) → BC7 (Ledger, C22) | **30ms** | Reject the trade, fail closed | `../Architecture/generated/15` §7 |
 | `GetBudgetSnapshot` | BC12 (C40) → BC6 (Risk, C21) | **30ms** (same pattern) | Admit nothing that cycle, fail closed | `../Architecture/18_Portfolio_Construction.md` |
-| `CheckKillSwitch` | In-process within C21, not cross-service | 10ms | HALT, fail closed | `../Architecture/generated/15` §7, ADR-0018 |
+| `CheckKillSwitch` | In-process within C21 (at token mint) **and** in-process within C24 (immediately before broker send, `ENTRY` intent only) — two independent local calls, not cross-service | 10ms | HALT, fail closed | `../Architecture/generated/15` §7, ADR-0018, ADR-0044 |
 | `Resolve` (artefact) | BC4, BC5, BC12 → Model Registry (C12-14, C18) | 10ms p99 | Serve last-resolved, marked stale | `../Architecture/20_Model_Registry.md` |
 | `GetSpec` / `IsTradable` | Any → Instrument Master (C04) | 10ms p99, cached | Fail closed (no trade without a valid spec) | `review/R19` §4 |
 | `Authorize` | Any privileged action → Identity (C39) | 15ms p99 | Fail closed, no override possible | `../Architecture/21_Security_Architecture.md` §3 |

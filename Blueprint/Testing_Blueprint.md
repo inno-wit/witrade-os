@@ -3,6 +3,7 @@
 **Blueprint deliverable:** B.10
 **Fills the gap named in:** `../Architecture/freeze/Interface_Compliance_Report.md` §4 — no page has a standalone "Testing Strategy" field. This document is where that gap gets a real, implementation-level home, per that report's own recommendation.
 **Status:** Blueprint v1.0, 2026-08-04
+**Amended:** 2026-08-06 — §4.1 and §4.2 added by [ADR-0044](../Architecture/decisions/0044-kill-switch-recheck-at-broker-send.md): two hard-gate chaos tests for the mint-to-send kill-switch hand-off window, and a named entry for the ADR-0019 exit-path trap.
 
 ---
 
@@ -52,6 +53,41 @@ async def test_env_mismatch_halts_the_consumer():
 ## 4. The fail-closed chaos suite, extended per Phase 11
 
 Directly implements `../Architecture/21_Security_Architecture.md` §7's stated extension: the credential-isolation test and the fail-closed chaos suite both gain new assertions for the Evidence Graph, Portfolio Construction, and Model Registry — killing each in turn and asserting the platform refuses to admit new candidates or promote artefacts, matching the existing assertion pattern for every pre-Phase-11 dependency.
+
+### 4.1 Mint-to-send hand-off window, added by ADR-0044
+
+The existing chaos suite is dependency-kill shaped — it tests what happens when a store is unreachable. It does not test a state *transition* during an in-flight operation, which is the axis contract 11 invariant 19 actually protects. Both cases below are a **hard gate before live capital** (`../Architecture/decisions/0044-kill-switch-recheck-at-broker-send.md`), not merely nightly chaos:
+
+```python
+# tests/chaos/test_kill_switch_handoff.py
+
+async def test_trip_between_mint_and_send_blocks_entry():
+    """Kill switch trips after C21 mints the token, before C24 sends. Entry must not reach the broker."""
+    token = await risk_service.decide(entry_proposal)          # AuthorisedOrder, intent=ENTRY, minted while clear
+    await kill_switch.trip(scope="platform", reason="chaos_test")
+    result = await execution_service.submit(token)              # C24's send-time recheck (invariant 19) must catch this
+    assert result.state in ("REJECTED", "UNKNOWN") or result is None
+    assert broker_adapter.send.call_count == 0                  # zero broker sends, the correctness SLO
+    assert not await token_store.is_consumed(token.authorisation_id)  # dropped unconsumed, not compare-and-set'd
+
+async def test_trip_between_mint_and_send_does_not_block_exit():
+    """Same trip, but the order is an exit. Must still reach the broker — this is the ADR-0019 fixed point."""
+    token = await risk_service.authorise_exit(exit_proposal)    # AuthorisedOrder, intent derived as EXIT from BC7 state
+    await kill_switch.trip(scope="platform", reason="chaos_test")
+    result = await execution_service.submit(token)
+    assert result.state in ("SUBMITTED", "ACKNOWLEDGED", "FILLED")
+    assert broker_adapter.send.call_count == 1                  # the send must happen despite the halt
+```
+
+**The second test is the one that matters more.** It is what stops a future engineer from "fixing" the first test into an unconditional recheck that silently violates ADR-0019 — the single most likely implementation bug in this area (§4.2 below). A chaos suite that only asserts the entry case would pass under exactly that regression.
+
+### 4.2 Named entry: the ADR-0019 exit-path trap
+
+Recorded explicitly rather than left as an implicit consequence of §4.1, because it is the most likely way an engineer breaks contract 11 invariant 19 while believing they are hardening it: applying the kill-switch recheck **unconditionally**, without the `intent == ENTRY` scope, "for safety." That reasoning is intuitive and wrong — an unconditional recheck traps the platform in a position during precisely the halt condition ADR-0019 exists to survive, and fails the existing correctness SLO (`contracts/11_Execution_Platform.contract.md` §SLO): *zero exits blocked by an entry-blocking rule.*
+
+- **Guard:** `test_trip_between_mint_and_send_does_not_block_exit` (§4.1) is a required, named test in the invariant-19 test file, not folded into a generic parametrised case where it could be silently skipped or weakened.
+- **Code review checklist item:** any diff touching the C24 send-path kill-switch check must show the `intent == ENTRY` guard in the same diff, or it is rejected on sight, independent of what the tests currently say — tests can be wrong or incomplete; the invariant text (contract 11, invariant 19) is the source of truth.
+- **Provenance:** found during the same pre-implementation review that produced ADR-0044 (finding F6), not discovered in production. Recorded here so it stays a known trap rather than being rediscovered live.
 
 ## 5. CI wiring
 

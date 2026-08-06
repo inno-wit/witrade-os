@@ -3,6 +3,7 @@
 **Blueprint deliverable:** B.6
 **Grounded in:** `../Architecture/review/R03_Domain_Model_DDD.md` (aggregates, entities, value objects per bounded context) and `../Architecture/decisions/0014-shared-kernel-limited-to-seven-types.md`. This document translates those DDD definitions into implementation-ready Pydantic-style schemas — it does not redesign the data model, which is frozen.
 **Status:** Blueprint v1.0, 2026-08-04
+**Amended:** 2026-08-06 — `AuthorisedOrder` gains `token_expires_at`, added by [ADR-0044](../Architecture/decisions/0044-kill-switch-recheck-at-broker-send.md) §5 (see §7 below for the field and why `halt_epoch` binding was considered and rejected).
 **Home in the repository:** `packages/schemas/` (per `Repository_Architecture.md` §2) and `packages/kernel/` for the seven shared type groups
 
 ---
@@ -177,8 +178,19 @@ class AuthorisedOrder(BaseModel):                        # the signed, single-us
     authorisation_id: str
     proposal_ref: str
     size: Quantity
-    valid_until: Timestamp
+    valid_until: Timestamp                                # decision staleness: age of the market/portfolio
+                                                            # snapshot the assessment was made against
+    token_expires_at: Timestamp                            # authorisation staleness: mint_time + 2s default,
+                                                            # distinct from valid_until (ADR-0044 §5). Checked
+                                                            # by C24's send-time recheck (contract 11 inv. 19)
+                                                            # in addition to, not instead of, valid_until.
     signature: str
+
+# `halt_epoch` / generation-counter binding was considered for AuthorisedOrder and rejected
+# (ADR-0044 §5, finding F5): once C24 performs a live three-tier kill-switch read at send time,
+# a generation-counter comparison is strictly subsumed by it, and would require new monotonic-
+# counter infrastructure in Postgres that nothing else in the design calls for. Do not re-propose
+# without first showing the live recheck (invariant 19) is insufficient on its own.
 
 class LimitSet(BaseModel):                                # immutable once published, dual-control (ADR-0024)
     limit_set_version: str

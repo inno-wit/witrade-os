@@ -3,6 +3,7 @@
 **Blueprint deliverable:** B.8
 **Scope:** every background, non-request-driven process in the platform — scheduled, event-triggered, or long-running.
 **Status:** Blueprint v1.0, 2026-08-04
+**Amended:** 2026-08-06 — the kill-switch self-halt heartbeat (`../Architecture/decisions/0018-kill-switch-three-tier-fail-closed-interlock.md`) was specified at the Architecture layer but dropped in this Blueprint's original translation. Restored here per [ADR-0044](../Architecture/decisions/0044-kill-switch-recheck-at-broker-send.md), found by an independent pre-implementation review.
 
 ---
 
@@ -24,6 +25,7 @@
 | **Reconciliation** | Scheduled (every N minutes) + event-triggered (`evt.execution.broker.reconnected`) | `capital/reconciliation` (C25) | Cron + NATS consumer | Break detected → `evt.reconciliation.break_detected`, Risk auto-trips kill switch on critical breaks |
 | **Model Monitor** | Continuous polling | `quant/model_monitor` (C14) | In-process loop against live inference outcomes | Correlated degradation → platform-scope kill switch (page 20 §3) |
 | **Cost Governor admission control** | Every LLM/data-vendor call | `decision/cost_governor` (C30) | In-process gate, not a background worker — listed for completeness since `review/R19` names it alongside the others | Budget exceeded → call blocked before it happens, not billed then regretted |
+| **Kill-switch self-halt heartbeat** | Continuous, in-process timer | **Every order-capable process: `risk/authorisation` (C21) and `bridge/execution` (C24)** | In-process loop, not a queue — tracks age of the last successful full-tier (T1+T2+T3) kill-switch read | Age > **10 seconds** since last successful full-tier read → the process halts itself unconditionally, independent of any shared component being reachable (ADR-0018 §"Self-halt heartbeat", restored by ADR-0044). This is the control that makes the switch robust to a network partition; a process that cannot be reached cannot be told to stop and must decide to |
 
 ## 2. Queue design
 

@@ -392,6 +392,17 @@ Per the freeze decision above, engineering may proceed on the sequence already s
 
 It is not a claim that WITrade OS works, that its risk controls will hold under a real drawdown, or that its security design will hold under a real attacker. No code exists; nothing in this report or the corpus it reviews has been executed, load-tested, or attacked. It is a claim that the **design**, independently and adversarially checked across governance, completeness, domain modeling, event architecture, interfaces, security, reliability, observability, implementation planning, and production readiness, is sound enough to build against — provided the conditions in Section 14 close on the schedule stated there, and provided the corpus stops describing itself as independently reviewed until an outside review (starting with this one) has actually occurred.
 
+## 16. Post-report resolution log (append-only, dated — this report's own findings are not edited in place)
+
+**2026-08-06 — G-2 partially closed.** Finding G-2 (§12, row G-2) recommended "at least one outside technical review of capital-affecting ADRs (0011, 0017–0025, 0042) ... before implementation starts on Risk, Kill Switch, or Execution." An independent pre-implementation review of the order-execution/kill-switch flow was conducted 2026-08-06 (two AI-generated flaw reports, adjudicated against source by a third, independent pass), covering **ADRs 0011, 0017, 0018, 0019, 0021, 0022, 0025, 0037, 0038** in the course of adjudicating a real finding (a mint-to-send kill-switch hand-off window). That review produced [ADR-0044](decisions/0044-kill-switch-recheck-at-broker-send.md), which closes the gap it found.
+
+**What this does and does not discharge:**
+- Discharged for ADRs 0011, 0017, 0018, 0019: reviewed in enough depth to find and correct a real gap, not merely read.
+- **Not discharged** for ADRs 0020, 0023, 0024, 0025 (reviewed only incidentally, as constraints checked against ADR-0044's fixes, not reviewed on their own terms) and **0042** (not touched at all by the 2026-08-06 review, which was scoped to the order-execution path, not the Model Registry).
+- G-2's recommendation was for review of the *capital-affecting ADR set as a whole*. This log entry closes one slice of it, found through the process of fixing a real defect, not through a systematic pass over the remaining list. The remaining scope (0020, 0023, 0024, 0025 reviewed properly on their own terms, plus 0042 entirely) is still open.
+
+This entry does not alter G-2's original severity (**MAJOR**) or priority (**P1**) in §12 — that row is the historical record of what the board found on 2026-08-04 and is left as written. This log is where post-report progress against it is tracked, per the same "dated addition, not a silent edit" discipline `freeze/Architecture_Freeze_v1.md` rule 3 applies to the frozen corpus.
+
 ## Related
 
 - `README.md`, `ROADMAP.md` — the corpus this report reviews

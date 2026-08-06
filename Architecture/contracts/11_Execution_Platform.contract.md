@@ -4,6 +4,7 @@
 **Adds:** Owns, Invariants, Interfaces, Degraded Mode, SLO, Security Boundary
 **Containers:** C24 Execution Service + C23 OMS + C25 Reconciliation · **Context:** Order Execution (BC8) · **Criticality:** Tier 0 · **Group:** Bridge (C24) and Capital (C23, C25)
 **Highest-value field for this page (R05 §11):** **Degraded Mode.** Specifically, behaviour with an `UNKNOWN` order outstanding
+**Amended:** 2026-08-06, invariant 19 added by [ADR-0044](../decisions/0044-kill-switch-recheck-at-broker-send.md) — closes the mint-to-send kill-switch hand-off window found by an independent pre-implementation review. Freeze rule 3 applies: this is a dated addition, invariants 1-18 unchanged.
 
 ---
 
@@ -62,6 +63,10 @@ For most systematic and discretionary strategies, exit management contributes as
 17. **No break is auto-corrected.** Corrections are dual-controlled operator actions, because an automatic correction against a temporarily wrong broker response would destroy the book.
 18. Broker truth wins on positions and fills. The Ledger wins on decision attribution. Never the reverse.
 
+### Execution (C24) — added 2026-08-06
+
+19. **The three-tier kill switch is re-evaluated immediately before `BrokerAdapter.send`, for `ENTRY`-intent orders only, with no awaitable operation between the check and the send.** Same combination rule as ADR-0018: `HALTED if ANY tier says HALTED OR ANY tier is unreadable`. On halt or unreadable tier: drop the token unconsumed (no compare-and-set), never send, emit `evt.execution.aborted.v1` with `reason: kill_switch_recheck`. `intent` is read from authoritative position state (ADR-0019 rule 4), never a caller-supplied field. `EXIT`-intent orders are unaffected — this invariant must never block an exit (ADR-0044, closes the mint-to-send hand-off window; ADR-0019 fixed point). Numbered 19 rather than inserted into the 1-10 Execution group above, because those were numbered before this invariant existed; it belongs conceptually with invariant 1, not chronologically after 18.
+
 Invariant 3 is the one that must exist before the thing it protects. Page 14 identifies the single Windows VPS as a failure risk and proposes a standby without addressing split-brain. Two live bridges without a lease is not redundancy, it is duplicate orders on every signal. The lease has to land before the standby does.
 
 ## Interfaces
@@ -111,6 +116,7 @@ The last-but-one row is the distinction that makes C25 worth building. A reconci
 | C23 decision to command issued | p50 < 50ms, p99 < 500ms |
 | C25 reconciliation run | p99 < 10s |
 | **Correctness** | **Zero orders sent without a valid token. Zero duplicate `client_order_id` submissions** |
+| **Correctness** | **Zero `ENTRY` orders sent while any kill-switch tier reports HALTED or unreadable. Zero `EXIT` orders blocked by the recheck** (invariant 19, ADR-0044) |
 | **Correctness** | **Zero open positions without a broker-side stop. Zero unmanaged open positions** |
 | Correctness | Zero orders left in `UNKNOWN` longer than 60s |
 | Reconciliation | Zero critical breaks open longer than 5 minutes. 100% of restarts gated on a clean reconciliation |
@@ -125,7 +131,7 @@ The last-but-one row is the distinction that makes C25 worth building. A reconci
 | **Secrets held** | **C24 is the only process in the platform holding broker credentials.** C23 and C25 hold none: C23 issues commands, C25 reads broker state through C24's adapter |
 | **Trusts** | The approval token's signature and nothing else about the command. **Trusts broker responses on position truth, and not on anything else** |
 | **Never trusts** | Its own send response as confirmation (invariant 7). A proposal's confidence. A retry's assumption that the previous attempt failed |
-| **Network** | Outbound to the broker endpoint only. **No inbound from the internet.** Operator access via C32 with mTLS, MFA, and typed confirmation |
+| **Network** | Outbound to the broker endpoint. Outbound to VAULT (T2 Redis, T3 Postgres), **kill-switch tier reads only**, added by ADR-0044 invariant 19 — see `21_Security_Architecture.md` §5 for the Bridge zone egress definition. **No inbound from the internet.** Operator access via C32 with mTLS, MFA, and typed confirmation |
 | **Privileged actions** | Manual order actions via Ops CLI require typed confirmation and are audited. `resolve_break` requires two approvers |
 | **Live trading gate** | Live is **off by default**. Two locks must open together: the environment gate and the per-order typed confirmation during any manual operation. Everything routes to paper until both do |
 
@@ -143,3 +149,4 @@ The credential isolation is the reason the VAULT boundary exists at all. Every o
 - `../decisions/0016-oms-owns-order-and-position-lifecycle.md` — C23
 - `../decisions/0022-every-entry-carries-a-broker-side-hard-stop.md` — invariant 10, fixed point
 - `../decisions/0037-commands-and-events-are-distinct.md` — invariant 2, closes B1
+- `../decisions/0044-kill-switch-recheck-at-broker-send.md` — invariant 19, added 2026-08-06

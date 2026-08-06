@@ -3,6 +3,7 @@
 **Blueprint deliverable:** B.13
 **Consolidates:** every disclosed gap from `../Architecture/freeze/*` (Phase A) plus the risks named per-phase in `Engineering_Roadmap.md` §2, in one register rather than scattered across nine files — the single-list discipline `../Architecture/freeze/Architecture_Freeze_v1.md` §8 rule 4 already commits to.
 **Status:** Blueprint v1.0, 2026-08-04
+**Amended:** 2026-08-06 — §6's kill-switch CI-lint row widened by [ADR-0044](../Architecture/decisions/0044-kill-switch-recheck-at-broker-send.md) to cover the new C24 send-time check, not only the original C21 mint-time check.
 
 ---
 
@@ -56,7 +57,8 @@ Directly inherited from `../Architecture/review/R11_Risk_Architecture.md` §10 �
 | Risk | Mitigation |
 |---|---|
 | BC12 could be miscoded to call BC6's internals directly, silently reopening the authorisation-authority question ADR-0043 closes | `Testing_Blueprint.md` §4's credential-isolation test extension, CI-enforced, every commit |
-| A future engineer "cleans up" the synchronous kill-switch check into an async pattern for consistency | ADR-0017's own Tripwire section: "none" — a fixed point, and the CI lint from `../Architecture/decisions/0035` (Clock injection) pattern should be extended to flag any `await` inserted after the kill-switch check |
+| A future engineer "cleans up" the synchronous kill-switch check into an async pattern for consistency — **at either check point**: the original mint-time check in C21 (ADR-0018), or the send-time check in C24 added by ADR-0044 (contract 11 invariant 19) | ADR-0017's own Tripwire section: "none" — a fixed point, and the CI lint from `../Architecture/decisions/0035` (Clock injection) pattern should be extended to flag any `await` inserted after **either** kill-switch check, not only the C21 one. The C24 check is the newer and less battle-tested of the two, so it is the more likely site for this mistake |
+| A future engineer applies the C24 kill-switch recheck (invariant 19) **unconditionally**, without the `intent == ENTRY` scope, silently violating ADR-0019 | `Testing_Blueprint.md` §4.2 — named entry, required test (`test_trip_between_mint_and_send_does_not_block_exit`), and a code-review checklist item: any diff touching the C24 check must show the `ENTRY` guard in the same diff |
 | Model/prompt Tier-0 dual-gate bypassed under deployment pressure | `Testing_Blueprint.md` §1 Security level, the authorisation-matrix test, extended per `../Architecture/21_Security_Architecture.md` §7 to cover promotion specifically |
 
 ## 7. Priority summary

@@ -3,7 +3,7 @@
 **Format:** lightweight MADR plus a mandatory **Tripwire** section.
 **Location:** `Architecture/decisions/NNNN-slug.md`
 **Register source:** `../review/R16_ADR_Register.md`
-**Status:** **43 of 43 written, 43 of 43 `Accepted`.** 0001-0040 decided or review-passed 2026-08-03; 0041-0043 added 2026-08-04 alongside pages 17-21 (`../README.md` Phase 11). No ADR remains `Proposed`.
+**Status:** **44 of 44 written, 44 of 44 `Accepted`.** 0001-0040 decided or review-passed 2026-08-03; 0041-0043 added 2026-08-04 alongside pages 17-21 (`../README.md` Phase 11); 0044 added 2026-08-06 following an independent pre-implementation review of the order path (`../freeze/Architecture_Freeze_v1.md` rule 3 — new dated ADR, no silent edit to the frozen 0001-0043 set). No ADR remains `Proposed`.
 
 ---
 
@@ -84,6 +84,8 @@ Two things here depend on that specifically:
 | 041 | The Evidence Graph is a first-class subsystem, not a pipeline stage | **P0** | [0041](0041-evidence-graph-is-a-first-class-subsystem.md) |
 | 042 | One Model Registry governs models, prompts, and desk weights alike, with a dual promotion gate for Tier-0 artefacts | P1 | [0042](0042-model-registry-governance-with-dual-promotion-gates.md) |
 | 043 | Portfolio Construction is a twelfth bounded context, upstream of Risk Authorisation, with no authorisation power | **P0** | [0043](0043-portfolio-construction-is-a-twelfth-bounded-context.md) |
+| **Post-freeze amendment (2026-08-06)** |
+| 044 | The kill switch is re-checked at broker send, scoped to `ENTRY`, not only at token mint | **P0** | [0044](0044-kill-switch-recheck-at-broker-send.md) |
 
 ---
 
@@ -211,6 +213,8 @@ Several ADRs name a metric. These must exist before the conditions can be evalua
 | `graph_committee_divergence` | 0041 | absent from production metrics for >1 quarter post-go-live |
 | Tier-0 promotions missing the second confirmation | 0042 | any occurrence is P0 |
 | BC12 admits nothing over the live pool for >12 months | 0043 | signal to promote §12's cross-strategy allocation from future to now |
+| C24 kill-switch recheck fires against an `EXIT`-derived order | 0044 | any occurrence is P0 (ADR-0019 violation) |
+| C24→VAULT kill-switch read latency vs send-path SLO budget | 0044 | any sustained encroachment on `contracts/11`'s send-path SLO |
 
 Two of these are unusual and worth keeping: **per-desk resolution** (0028) and **committee vs baseline on disagreements** (0027). Together they are the only things that make the committee's existence falsifiable rather than assumed. `graph_committee_divergence` (0041) is the same idea applied one layer earlier, at the evidence graph rather than the vote.
 

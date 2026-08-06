@@ -5,6 +5,7 @@
 **C4 Level:** L2 — Container (cross-cutting trust-boundary view)
 **Depends on:** all pages, principally `10_Risk_Portfolio_Platform.md`, `11_Execution_Platform.md`, `17_Evidence_Graph.md`, `20_Model_Registry.md`
 **Status:** Canonical operational home for platform security. **Threats T1-T6, and the full prose treatment of secrets, insider controls, data protection, API security, and incident response, remain in `review/R15_Security.md` (unmodified) — this page extends the threat model to T7-T11 (the gaps introduced or clarified by pages 17-20) and states the cross-cutting principles the user's brief asks for explicitly, at the level a decade-long operator needs at a glance.**
+**Amended:** 2026-08-06 — §5 gains an explicit Bridge zone and a narrowly-scoped Bridge→VAULT egress rule, added by [ADR-0044](decisions/0044-kill-switch-recheck-at-broker-send.md). The zone model previously named only DMZ/CORE/VAULT/OPS; C24 (Bridge) already existed as a container (`contracts/11_Execution_Platform.contract.md`) but had no entry in the zone model itself, an omission an independent pre-implementation review flagged as a blocker for the kill-switch send-time recheck (invariant 19).
 
 ---
 
@@ -109,6 +110,10 @@ Unchanged from R15 §4 and §8: Tier-0 secrets on exactly one host, readable by 
 ## 5. Network segmentation
 
 Unchanged from R15 §2: DMZ / CORE / VAULT / OPS, with the rule that carries the most weight — **only the Risk Engine may open a connection to the Execution Service**, enforced at the network layer. BC12 Portfolio Construction (page 18) and the Model Registry (page 20) both sit in CORE and are subject to the identical rule: neither can reach VAULT under any configuration.
+
+**Fifth zone, named explicitly: Bridge.** C24 (Execution Service) runs on a Windows VPS outside DMZ/CORE/VAULT/OPS — it is the only Windows-bound, MT5-adjacent container in the platform (`contracts/11_Execution_Platform.contract.md` §Security Boundary). Bridge's default network posture is outbound-only to the broker endpoint, with no inbound from the internet and no reachability into VAULT, CORE, or OPS.
+
+**One narrow exception, added by ADR-0044:** Bridge → VAULT, **kill-switch tier reads only** (T2 Redis, T3 Postgres), for the send-time kill-switch recheck (contract 11 invariant 19). This is read-only, limited to the two kill-switch tiers, and grants no other VAULT service reachability from Bridge — C24 gains a live read dependency the Architecture already imposes on every order-capable process (ADR-0018's self-halt heartbeat), made explicit here rather than left implicit. This is the only sanctioned Bridge-initiated connection into any other zone; it does not weaken the "only Risk may connect to Execution" rule above, which governs the opposite direction (VAULT/CORE → Bridge) and is unchanged.
 
 ## 6. Audit logging and immutable logs
 

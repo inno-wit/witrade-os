@@ -3,6 +3,7 @@
 **Blueprint deliverable:** B.7
 **Rule:** interfaces only. No implementation. Every method signature below is the public contract a service exposes to the rest of the platform (per `Package_Blueprint.md` §1's `api/` module) — the body is deferred entirely to implementation.
 **Status:** Blueprint v1.0, 2026-08-04
+**Amended:** 2026-08-06 — `KillSwitchService` and `ExecutionService` updated per [ADR-0044](../Architecture/decisions/0044-kill-switch-recheck-at-broker-send.md): the kill switch is now explicitly held by both C21 and C24, and a `heartbeat_age_seconds()` method makes ADR-0018's self-halt heartbeat an explicit interface member rather than an unstated assumption.
 
 ---
 
@@ -69,10 +70,15 @@ class RiskService(Protocol):
     async def get_budget_snapshot(self) -> dict: ...  # RiskBudgetSnapshot, read model published to BC12
 
 class KillSwitchService(Protocol):
-    """In-process interlock, not a network call — listed for interface completeness."""
+    """In-process interlock — the method call is local and synchronous, not a network call,
+    even though it may read T2/T3 tiers internally. Held by TWO processes, not one:
+    C21 (Risk, at token mint) AND C24 (Execution, at broker send, ENTRY intent only,
+    ADR-0044). Each instance is independent; there is no shared/singleton kill switch object."""
     def check(self) -> bool: ...  # True == HALTED. Checked last, no await after this point.
     def trip(self, scope: Literal["platform","account","symbol","strategy"], reason: str) -> None: ...
     def clear(self, scope: str, approvals: list[str]) -> None: ...  # dual control enforced by the caller
+    def heartbeat_age_seconds(self) -> float: ...  # age of last successful full-tier (T1+T2+T3) read;
+                                                     # > 10s => self-halt, independent of reachability (ADR-0018, ADR-0044)
 
 # ── BC7 — Portfolio (Ledger) ──────────────────────────────────────────────
 
@@ -85,6 +91,10 @@ class LedgerService(Protocol):
 
 class ExecutionService(Protocol):
     async def submit(self, order: AuthorisedOrder) -> Order: ...
+    # Internally: immediately before BrokerAdapter.send, for ENTRY-intent orders only,
+    # re-evaluates KillSwitchService.check() with no awaitable operation in between.
+    # On HALTED/unreadable: drop the token unconsumed, never send (contract 11 invariant 19,
+    # ADR-0044). Not a separate public method — part of submit()'s internal contract.
 
 class OMSService(Protocol):
     async def move_stop(self, position_id: str, new_stop: Decimal) -> None: ...
