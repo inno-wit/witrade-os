@@ -11,7 +11,7 @@
 
 | # | Risk | Source | Priority | Mitigation |
 |---|---|---|---|---|
-| TD1 | BC2 (Reference Data), BC7 (Portfolio) have no dedicated architecture page | `../Architecture/freeze/Architecture_Freeze_v1.md` §6 item 12 | P1 | Write the two pages before implementation starts on either context specifically (Phases 4 and 10) |
+| TD1 | BC2 (Reference Data), BC7 (Portfolio) have no dedicated architecture page | `../Architecture/freeze/Architecture_Freeze_v1.md` §6 item 12 | P1 | Write the two pages before implementation starts on either context specifically (Phases 4 and 10). **BC2 half now closed at the implementation level** — `../Architecture/22_Reference_Data.md` consolidates the previously-scattered R05 §3 / R19 §4 content into the standard page template. Implementation-level closure only: the formal Architecture Review this gate's own entry criteria require is a separate, still-open human step (`witrade/ROADMAP.md` Gate 4). BC7 (Portfolio, Phase 10) remains open, unchanged, out of scope here |
 | TD2 | No standalone data dictionary | `../Architecture/freeze/Canonical_Source_Validation.md` §1 row 8 | P2 | Generate from the Schema Registry once C37 exists |
 | TD3 | `../Architecture/generated/15`/`16` remain hand-maintained | `../Architecture/freeze/Architecture_Audit_Report.md` §3 | P2 | Machine-generate once C37 and deployment manifests exist |
 | TD4 | No Testing Strategy / Version field on any architecture page | `../Architecture/freeze/Interface_Compliance_Report.md` §4 | P2 | Addressed at implementation level by `Testing_Blueprint.md`; architecture-page retrofit deferred to a v1.1 pass |
@@ -66,7 +66,7 @@ Directly inherited from `../Architecture/review/R11_Risk_Architecture.md` §10 �
 | Priority | Count | Items |
 |---|---:|---|
 | P0 | 0 | None — the freeze certified zero blocking items |
-| P1 | 2 | TD1, TD8 (TD8 now closed at implementation level, tracked as resolved) |
+| P1 | 2 | TD1 (BC2 half now closed at implementation level; BC7 half open), TD8 (now closed at implementation level, tracked as resolved) |
 | P2 | 4 | TD2, TD3, TD4, TD6 |
 | P3 | 2 | TD5, TD7 |
 
